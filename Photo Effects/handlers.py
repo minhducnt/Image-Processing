@@ -4,6 +4,7 @@ import time
 
 from filters import *
 
+# A dictionary that maps a key to a function and a name.
 _default_filter_map = {
     'c': (clarendon, 'Clarendon'),
     'k': (kelvin, 'Kelvin'),
@@ -21,6 +22,7 @@ _default_filter_map = {
 }
 
 
+# It binds the default filters to the root window, and updates the current filter function
 class RootHandler:
 
     def __init__(self, panel):
@@ -41,6 +43,7 @@ class RootHandler:
         self.curr_func(self.panel, img_handler)
 
 
+# It's a class that handles the image frames and the image labels
 class ImageHandler:
 
     def __init__(self, frame, filtered_frame, out_path):

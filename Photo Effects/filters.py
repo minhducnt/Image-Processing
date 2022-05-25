@@ -4,11 +4,24 @@ from scipy.interpolate import UnivariateSpline
 
 
 def _create_LUT_BUC1(x, y):
+    """
+    It takes two lists of numbers, x and y, and returns a list of 256 numbers that are the result of
+    interpolating the values of y at the points x
+    
+    :param x: The x-coordinates of the interpolated values
+    :param y: the y-coordinates of the sample points
+    :return: A list of 256 values.
+    """
     spl = UnivariateSpline(x, y)
     return spl(range(256))
 
 
 def _create_loopup_tables():
+    """
+    > The function creates two lookup tables, one for increasing the contrast and one for decreasing the
+    contrast
+    :return: two lookup tables, one for increasing the contrast and one for decreasing the contrast.
+    """
     incr_ch_lut = _create_LUT_BUC1(
         [0, 64, 128, 192, 256], [0, 70, 140, 210, 256])
     decr_ch_lut = _create_LUT_BUC1(
@@ -18,6 +31,13 @@ def _create_loopup_tables():
 
 
 def _warming(orig):
+    """
+    It takes an image, splits it into its BGR channels, increases the red channel and decreases the blue
+    channel, then merges the channels back together
+    
+    :param orig: The original image
+    :return: the output of the image.
+    """
     incr_ch_lut, decr_ch_lut = _create_loopup_tables()
 
     c_b, c_g, c_r = cv2.split(orig)
@@ -33,6 +53,30 @@ def _warming(orig):
 
 
 def _cooling(orig):
+    """
+    We split the image into its three channels, then we apply a lookup table to the red channel to
+    decrease its intensity, and we apply a lookup table to the blue channel to increase its intensity. 
+    
+    We then split the image into its HSV channels, and we apply a lookup table to the saturation channel
+    to decrease its intensity. 
+    
+    Finally, we merge the HSV channels back together, convert the image back to BGR, and return the
+    result. 
+    
+    Let's see what the result looks like:
+    
+    # Python
+    img = cv2.imread('../images/input.jpg')
+    cooled = _cooling(img)
+    
+    cv2.imshow('Original', img)
+    cv2.imshow('Cooling', cooled)
+    cv2.waitKey()
+    cv2.destroyAllWindows()
+    
+    :param orig: The original image
+    :return: the output of the image.
+    """
     incr_ch_lut, decr_ch_lut = _create_loopup_tables()
 
     c_b, c_g, c_r = cv2.split(orig)
@@ -48,6 +92,13 @@ def _cooling(orig):
 
 
 def _cartoon2(orig):
+    """
+    Apply bilateral filter to the image, then apply adaptive thresholding to the grayscale version of
+    the image, then bitwise-and the two images together.
+    
+    :param orig: the original image
+    :return: The output is a cartoonized image.
+    """
     img = orig.copy()
 
     for _ in range(2):
@@ -70,6 +121,13 @@ def _cartoon2(orig):
 
 
 def _cartoon(orig):
+    """
+    It takes an image, converts it to grayscale, blurs it, finds the edges, inverts the edges, applies a
+    bilateral filter, and then combines the bilateral filtered image with the inverted edges
+    
+    :param orig: The original image
+    :return: The output is a numpy array of the same shape as the input image.
+    """
     img = np.copy(orig)
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img_gray = cv2.GaussianBlur(img_gray, (3, 3), 0)
@@ -84,11 +142,26 @@ def _cartoon(orig):
 
 
 def _color_dodge(top, bottom):
+    """
+    > The color dodge blend mode divides the bottom layer by the inverted top layer
+    
+    :param top: The image to be blended
+    :param bottom: The first image
+    :return: The output is the image that is being returned.
+    """
     output = cv2.divide(bottom, 255 - top, scale=256)
     return output
 
 
 def _sketch_pencil_using_blending(orig, kernel_size=21):
+    """
+    We invert the image, blur it, and then blend it with the original image using the color dodge
+    blending mode
+    
+    :param orig: The original image
+    :param kernel_size: The size of the kernel to use for the Gaussian blur, defaults to 21 (optional)
+    :return: The image is being returned in grayscale.
+    """
     img = np.copy(orig)
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img_gray_inv = 255 - img_gray
@@ -99,6 +172,13 @@ def _sketch_pencil_using_blending(orig, kernel_size=21):
 
 
 def _sketch_pencil_using_edge_detection(orig):
+    """
+    We take the original image, convert it to grayscale, blur it, find the edges, invert the edges, and
+    then return the edges as a color image
+    
+    :param orig: The original image
+    :return: the edge mask.
+    """
     img = np.copy(orig)
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img_gray_blur = cv2.GaussianBlur(img_gray, (3, 3), 0)
@@ -109,6 +189,14 @@ def _sketch_pencil_using_edge_detection(orig):
 
 
 def _adjust_contrast(orig, scale_factor):
+    """
+    It takes an image and a scale factor, and returns a new image with the contrast adjusted by the
+    scale factor
+    
+    :param orig: the original image
+    :param scale_factor: The amount of contrast to add. 1.0 is no change
+    :return: The image with the adjusted contrast.
+    """
     img = np.copy(orig)
     ycb_img = cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
     ycb_img = np.float32(ycb_img)
@@ -120,6 +208,13 @@ def _adjust_contrast(orig, scale_factor):
 
 
 def _apply_vignette(orig, vignette_scale):
+    """
+    It takes an image and a scale factor, and returns a new image with a vignette applied
+    
+    :param orig: the original image
+    :param vignette_scale: The scale of the vignette. The smaller the scale, the larger the vignette
+    :return: the image with the vignette applied.
+    """
     img = np.copy(orig)
     img = np.float32(img)
     rows, cols = img.shape[:2]
@@ -138,6 +233,14 @@ def _apply_vignette(orig, vignette_scale):
 
 
 def _xpro2(orig, vignette_scale=3):
+    """
+    It applies a vignette, then applies a color curve to each channel, then adjusts the contrast
+    
+    :param orig: the original image
+    :param vignette_scale: The scale of the vignette. The larger the number, the larger the vignette,
+    defaults to 3 (optional)
+    :return: The image is being returned.
+    """
     img = np.copy(orig)
     img = _apply_vignette(img, vignette_scale)
     b_channel = img[:, :, 0]
@@ -164,6 +267,13 @@ def _xpro2(orig, vignette_scale=3):
 
 
 def _clarendon(orig):
+    """
+    It takes an image, splits it into its three color channels, applies a lookup table to each channel,
+    and then recombines the channels into a new image
+    
+    :param orig: the original image
+    :return: the image with the applied filter.
+    """
     img = np.copy(orig)
     b_channel = img[:, :, 0]
     g_channel = img[:, :, 1]
@@ -186,6 +296,13 @@ def _clarendon(orig):
 
 
 def _kelvin(orig):
+    """
+    It takes an image, splits it into its three channels, applies a lookup table to each channel, and
+    then recombines the channels into a new image
+    
+    :param orig: The original image
+    :return: The image is being returned.
+    """
     img = np.copy(orig)
     b_channel = img[:, :, 0]
     g_channel = img[:, :, 1]
@@ -211,6 +328,14 @@ def _kelvin(orig):
 
 
 def _adjust_saturation(orig, saturation_scale=1.0):
+    """
+    It takes an image and a saturation scale, converts the image to HSV, multiplies the saturation
+    channel by the saturation scale, and then converts the image back to BGR
+    
+    :param orig: the original image
+    :param saturation_scale: A float value that scales the saturation of the image
+    :return: The image with the saturation adjusted.
+    """
     img = np.copy(orig)
     hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     hsv_img = np.float32(hsv_img)
@@ -222,6 +347,13 @@ def _adjust_saturation(orig, saturation_scale=1.0):
 
 
 def _moon(orig):
+    """
+    It takes an image, converts it to LAB color space, applies a lookup table to the L channel, converts
+    it back to BGR, and then adjusts the saturation
+    
+    :param orig: the original image
+    :return: The image is being returned.
+    """
     img = np.copy(orig)
     origin = np.array([0, 15, 30, 50, 70, 90, 120, 160, 180, 210, 255])
     _curve = np.array([0, 0, 5, 15, 60, 110, 150, 190, 210, 230, 255])
@@ -236,6 +368,18 @@ def _moon(orig):
 
 
 def clarendon(panel, img_handler, root_handler=None, e=None, init=True):
+    """
+    A function that takes in a panel, an image handler, a root handler, an event, and a boolean. It then
+    updates the root handler with the event character. It then updates the label of the image handler
+    with the panel and the output of the _clarendon function.
+    
+    :param panel: the panel that the image is displayed on
+    :param img_handler: The ImageHandler object that is used to update the image
+    :param root_handler: the root handler of the GUI
+    :param e: the event that triggered the function
+    :param init: If the function is being called for the first time, init will be True, defaults to True
+    (optional)
+    """
     if e is not None:
         root_handler.update_func(e.char)
     if init is True:
@@ -244,6 +388,16 @@ def clarendon(panel, img_handler, root_handler=None, e=None, init=True):
 
 
 def sketch_pencil_using_edge_detection(panel, img_handler, root_handler=None, e=None, init=True):
+    """
+    It takes an image, converts it to grayscale, blurs it, and then finds the edges
+    
+    :param panel: The panel where the image is displayed
+    :param img_handler: This is the image handler object that we created in the previous section
+    :param root_handler: This is the class that handles the root window
+    :param e: the event that triggered the function
+    :param init: This is a boolean value that is used to initialize the function, defaults to True
+    (optional)
+    """
     if e is not None:
         root_handler.update_func(e.char)
     if init is True:
@@ -252,6 +406,17 @@ def sketch_pencil_using_edge_detection(panel, img_handler, root_handler=None, e=
 
 
 def xpro2(panel, img_handler, root_handler=None, e=None, init=True):
+    """
+    `xpro2` is a function that takes in a panel, an image handler, a root handler, an event, and a
+    boolean, and updates the image handler's label with the output of the `_xpro2` function.
+    
+    :param panel: the panel that the image will be displayed on
+    :param img_handler: The image handler object
+    :param root_handler: This is the handler for the root window
+    :param e: the event that triggered the function
+    :param init: If True, the function will be called once. If False, the function will be called every
+    time the user presses a key, defaults to True (optional)
+    """
     if e is not None:
         root_handler.update_func(e.char)
     if init is True:
@@ -260,6 +425,20 @@ def xpro2(panel, img_handler, root_handler=None, e=None, init=True):
 
 
 def kelvin(panel, img_handler, root_handler=None, e=None, init=True):
+    """
+    > The function takes in a panel, an image handler, a root handler, an event, and a boolean. If the
+    event is not None, the root handler updates the function with the event's character. If the boolean
+    is True, the function outputs the image handler's frame after it has been processed by the _kelvin
+    function. The image handler then updates the panel with the output
+    
+    :param panel: The panel that the image is displayed on
+    :param img_handler: The image handler object
+    :param root_handler: This is the handler for the root window. It's used to update the text in the
+    entry box
+    :param e: the event that triggered the function
+    :param init: This is a boolean that is set to True when the function is first called, defaults to
+    True (optional)
+    """
     if e is not None:
         root_handler.update_func(e.char)
     if init is True:
@@ -268,6 +447,17 @@ def kelvin(panel, img_handler, root_handler=None, e=None, init=True):
 
 
 def sketch_pencil_using_blending(panel, img_handler, root_handler=None, e=None, init=True):
+    """
+    It takes an image, converts it to grayscale, blurs it, and then subtracts the blurred image from the
+    original image
+    
+    :param panel: The panel where the image is displayed
+    :param img_handler: The image handler object
+    :param root_handler: This is the class that handles the root window
+    :param e: the event that triggered the function
+    :param init: If True, the function will be called once. If False, the function will be called every
+    time the user presses a key, defaults to True (optional)
+    """
     if e is not None:
         root_handler.update_func(e.char)
     if init is True:
@@ -276,6 +466,19 @@ def sketch_pencil_using_blending(panel, img_handler, root_handler=None, e=None, 
 
 
 def moon(panel, img_handler, root_handler=None, e=None, init=True):
+    """
+    > The function `moon` takes in a panel, an image handler, a root handler, an event, and a boolean.
+    If the event is not None, the root handler updates the function with the event's character. If the
+    boolean is True, the function outputs the image handler's frame after it has been processed by the
+    function `_moon`. The image handler then updates the panel with the output
+    
+    :param panel: The panel that the image is being displayed on
+    :param img_handler: The image handler object
+    :param root_handler: This is the root handler of the GUI. It's used to update the textbox
+    :param e: the event that triggered the function
+    :param init: If True, the function will be called once, and then the function will be called again
+    with init=False, defaults to True (optional)
+    """
     if e is not None:
         root_handler.update_func(e.char)
     if init is True:
@@ -284,6 +487,16 @@ def moon(panel, img_handler, root_handler=None, e=None, init=True):
 
 
 def cartoon(panel, img_handler, root_handler=None, e=None, init=True):
+    """
+    It takes in a panel, an image handler, a root handler, an event, and a boolean, and then updates the
+    image handler's label with the cartoonized image.
+    
+    :param panel: the panel that the image is displayed on
+    :param img_handler: The image handler object
+    :param root_handler: the root handler of the GUI
+    :param e: the event that triggered the function
+    :param init: If True, the function will be called for the first time, defaults to True (optional)
+    """
     if e is not None:
         root_handler.update_func(e.char)
     if init is True:
@@ -292,6 +505,16 @@ def cartoon(panel, img_handler, root_handler=None, e=None, init=True):
 
 
 def invert(panel, img_handler, root_handler=None, e=None, init=True):
+    """
+    > This function inverts the image
+    
+    :param panel: The panel that the image is being displayed on
+    :param img_handler: The image handler object
+    :param root_handler: The root handler object
+    :param e: the event that triggered the function
+    :param init: This is a boolean value that is used to determine whether the function is being called
+    for the first time or not, defaults to True (optional)
+    """
     if e is not None:
         root_handler.update_func(e.char)
     if init is True:
@@ -300,6 +523,17 @@ def invert(panel, img_handler, root_handler=None, e=None, init=True):
 
 
 def black_and_white(panel, img_handler, root_handler=None, e=None, init=True):
+    """
+    > This function converts the image to grayscale, then applies a threshold to the grayscale image,
+    then converts the thresholded image back to BGR
+    
+    :param panel: the panel that the image is being displayed on
+    :param img_handler: The image handler object
+    :param root_handler: The root handler object
+    :param e: the event that triggered the function
+    :param init: This is a boolean value that tells the function whether or not it's being called for
+    the first time, defaults to True (optional)
+    """
     if e is not None:
         root_handler.update_func(e.char)
 
@@ -311,6 +545,15 @@ def black_and_white(panel, img_handler, root_handler=None, e=None, init=True):
 
 
 def warming(panel, img_handler, root_handler=None, e=None, init=True):
+    """
+    It takes in a frame, and returns a frame with a warming filter applied to it
+    
+    :param panel: the panel that the image is displayed on
+    :param img_handler: the image handler object
+    :param root_handler: the root handler of the GUI
+    :param e: the event that triggered the function
+    :param init: If True, the function will be called for the first time, defaults to True (optional)
+    """
     if e is not None:
         root_handler.update_func(e.char)
     if init is True:
@@ -319,6 +562,17 @@ def warming(panel, img_handler, root_handler=None, e=None, init=True):
 
 
 def cooling(panel, img_handler, root_handler=None, e=None, init=True):
+    """
+    It takes an image, and returns a new image with the same dimensions, but with the pixel values
+    modified according to the cooling function
+    
+    :param panel: the panel that the image is displayed on
+    :param img_handler: The image handler object
+    :param root_handler: The root handler of the GUI
+    :param e: the event that triggered the function
+    :param init: If True, the function will be called once. If False, the function will be called every
+    time the key is pressed, defaults to True (optional)
+    """
     if e is not None:
         root_handler.update_func(e.char)
     if init is True:
@@ -327,6 +581,17 @@ def cooling(panel, img_handler, root_handler=None, e=None, init=True):
 
 
 def cartoon2(panel, img_handler, root_handler=None, e=None, init=True):
+    """
+    `cartoon2` is a function that takes in a panel, an image handler, a root handler, an event, and a
+    boolean, and updates the image handler's label with the cartoonized image.
+    
+    :param panel: the panel that the image is displayed on
+    :param img_handler: The image handler object
+    :param root_handler: the root handler object
+    :param e: the event that triggered the function
+    :param init: If True, the function will be called once before the main loop starts, defaults to True
+    (optional)
+    """
     if e is not None:
         root_handler.update_func(e.char)
     if init is True:
@@ -335,6 +600,17 @@ def cartoon2(panel, img_handler, root_handler=None, e=None, init=True):
 
 
 def no_filter(panel, img_handler, root_handler=None, e=None, init=True):
+    """
+    > This function is called when the user presses the 'n' key. It updates the image handler's frame to
+    the current frame
+    
+    :param panel: the panel that the image will be displayed on
+    :param img_handler: The image handler object
+    :param root_handler: the root handler object
+    :param e: the event that triggered the function
+    :param init: If True, the function will be called once when the program starts, defaults to True
+    (optional)
+    """
     if e is not None:
         root_handler.update_func(e.char)
     if init is True:
